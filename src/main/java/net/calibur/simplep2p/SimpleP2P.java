@@ -1,24 +1,40 @@
 package net.calibur.simplep2p;
 
 import net.fabricmc.api.ModInitializer;
+import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
+import net.minecraft.network.chat.Component; // "Text" became "Component"
+import net.minecraft.commands.Commands; // "CommandManager" became "Commands"
+import java.util.UUID;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+// We import "literal" from Commands now
+import static net.minecraft.commands.Commands.literal;
 
 public class SimpleP2P implements ModInitializer {
-	public static final String MOD_ID = "simplep2p";
 
-	// This logger is used to write text to the console and the log file.
-	// It is considered best practice to use your mod id as the logger's name.
-	// That way, it's clear which mod wrote info, warnings, and errors.
-	public static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
+	public static String currentSessionKey = "";
 
 	@Override
 	public void onInitialize() {
-		// This code runs as soon as Minecraft is in a mod-load-ready state.
-		// However, some things (like resources) may still be uninitialized.
-		// Proceed with mild caution.
+		System.out.println("SimpleP2P is loading (Mojang Mappings)!");
 
-		LOGGER.info("Hello Fabric world!");
+		CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) -> {
+
+			dispatcher.register(literal("p2p")
+					.then(literal("host")
+							.executes(context -> {
+								// 1. Generate Key
+								currentSessionKey = UUID.randomUUID().toString().substring(0, 8);
+
+								// 2. Send Message
+								// In Mojang mappings: "sendFeedback" is often "sendSuccess"
+								// And "Text.literal" is "Component.literal"
+								context.getSource().sendSuccess(() -> Component.literal("§a[P2P] Session Started!"), false);
+								context.getSource().sendSuccess(() -> Component.literal("§eSecret Key: §f" + currentSessionKey), false);
+
+								return 1;
+							})
+					)
+			);
+		});
 	}
 }
