@@ -4,6 +4,7 @@ import net.minecraft.client.Minecraft; // "Minecraft" in Mojang mappings
 import net.minecraft.client.gui.screens.ConnectScreen;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.multiplayer.ServerData;
+import net.minecraft.client.multiplayer.TransferState;
 import net.minecraft.client.multiplayer.resolver.ServerAddress;
 import net.calibur.simplep2p.SimpleP2P;
 import net.calibur.simplep2p.UDPConnection;
@@ -17,7 +18,7 @@ public class MixinConnectScreen {
 
     // We inject code at the HEAD (start) of the startConnecting method
     @Inject(method = "startConnecting", at = @At("HEAD"), cancellable = true)
-    private static void onStartConnecting(Screen parent, Minecraft client, ServerAddress serverAddress, ServerData serverData, boolean b, CallbackInfo ci) {
+    private static void onStartConnecting(Screen screen, Minecraft minecraft, ServerAddress serverAddress, ServerData serverData, boolean bl, TransferState transferState, CallbackInfo ci) {
 
         String inputHost = serverAddress.getHost();
 
@@ -38,7 +39,7 @@ public class MixinConnectScreen {
                 if (SimpleP2P.activeConnection != null) SimpleP2P.activeConnection.close();
 
                 // We don't have a chat source here, so pass null
-                SimpleP2P.activeConnection = new UDPConnection("127.0.0.1", 5000, null);
+                SimpleP2P.activeConnection = new UDPConnection("interchange.proxy.rlwy.net", 22876, null, null);
                 SimpleP2P.activeConnection.lookup(inputHost);
                 SimpleP2P.activeConnection.startClientProxy();
 
@@ -48,10 +49,10 @@ public class MixinConnectScreen {
                 try { Thread.sleep(2000); } catch (InterruptedException e) {}
 
                 // 4. Re-trigger the connection, but this time to LOCALHOST
-                client.execute(() -> {
+                minecraft.execute(() -> {
                     ConnectScreen.startConnecting(
-                            parent,
-                            client,
+                            screen,
+                            minecraft,
                             new ServerAddress("127.0.0.1", 33333), // Connect to our Proxy
                             serverData,
                             false,
