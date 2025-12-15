@@ -39,7 +39,7 @@ public class MixinConnectScreen {
                 if (SimpleP2P.activeConnection != null) SimpleP2P.activeConnection.close();
 
                 // We don't have a chat source here, so pass null
-                SimpleP2P.activeConnection = new UDPConnection("interchange.proxy.rlwy.net", 22876, null, null);
+                SimpleP2P.activeConnection = new UDPConnection("127.0.0.1", 5000, null, null);
                 SimpleP2P.activeConnection.lookup(inputHost);
                 SimpleP2P.activeConnection.startClientProxy();
 
