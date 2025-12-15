@@ -1,4 +1,4 @@
-package net.calibur.simplep2p.mixin;
+package net.calibur.simplep2p.mixin.client;
 
 import net.minecraft.client.Minecraft; // "Minecraft" in Mojang mappings
 import net.minecraft.client.gui.screens.ConnectScreen;

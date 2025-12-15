@@ -6,7 +6,6 @@
         "ExampleMixin"
     ],
     "client": [
-        "MixinConnectScreen"
     ],
     "injectors": {
         "defaultRequire": 1
