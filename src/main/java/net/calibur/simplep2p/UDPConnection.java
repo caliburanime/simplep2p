@@ -1,7 +1,7 @@
 package net.calibur.simplep2p;
 
 import net.minecraft.network.chat.Component;
-import net.minecraft.server.MinecraftServer; // Import this!
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.commands.CommandSourceStack;
 
 import java.io.InputStream;
@@ -22,23 +22,25 @@ public class UDPConnection {
     private int signalingPort;
 
     // PROXY VARIABLES
-    private ServerSocket gameListener;
-    private Socket gameSocket;
+    private ServerSocket gameListener; // Client side listener
+    private Socket gameSocket;         // The active pipe to the game
     private InputStream gameIn;
     private OutputStream gameOut;
     private boolean isHost = false;
 
+    // We need to remember the local port to restart the proxy later
+    private int localServerPort = -1;
+
     private CommandSourceStack source;
-    private MinecraftServer server; // NEW: Reference to the server engine
+    private MinecraftServer server;
 
     private static final int PACKET_SIZE = 1024;
     private static final byte HEADER_GAME_DATA = 0x01;
     private static final byte HEADER_CONTROL   = 0x02;
 
-    // UPDATED CONSTRUCTOR: Now accepts 'MinecraftServer server'
     public UDPConnection(String signalIp, int signalPort, CommandSourceStack source, MinecraftServer server) {
         this.source = source;
-        this.server = server; // Save it
+        this.server = server;
         try {
             this.signalingIP = InetAddress.getByName(signalIp);
             this.signalingPort = signalPort;
@@ -69,12 +71,16 @@ public class UDPConnection {
                 }
                 else if (packetType == HEADER_GAME_DATA) {
                     if (gameOut != null && isConnectedToPeer) {
-                        gameOut.write(data, 1, len - 1);
-                        gameOut.flush();
+                        try {
+                            gameOut.write(data, 1, len - 1);
+                            gameOut.flush();
+                        } catch (SocketException e) {
+                            // If writing to game fails (server closed connection), stop being connected
+                            isConnectedToPeer = false;
+                        }
                     }
                 }
             } catch (SocketException e) {
-                // Ignore Windows "Connection Reset" errors
                 if (e.getMessage().contains("Connection reset") || e.getMessage().contains("connection was aborted")) continue;
                 if (running) System.out.println("UDP Error: " + e.getMessage());
             } catch (Exception e) {
@@ -85,6 +91,10 @@ public class UDPConnection {
 
     private void handleControlMessage(String msg, InetAddress ip, int port) {
         if (msg.startsWith("PEER")) {
+            // FIX 1: NEW PEER INFO MEANS NEW SESSION!
+            // We must reset the state so the handshake happens again.
+            isConnectedToPeer = false;
+
             String[] parts = msg.split(" ");
             try {
                 this.peerIP = InetAddress.getByName(parts[1]);
@@ -94,20 +104,20 @@ public class UDPConnection {
             } catch (Exception e) { e.printStackTrace(); }
         }
         else if (msg.equals("HELLO")) {
+            // Only run init logic if we weren't already connected
             if (!isConnectedToPeer) {
                 isConnectedToPeer = true;
                 log("§a>>> CONNECTION ESTABLISHED! <<<");
 
-                // --- NEW FIX: THE DOORBELL ---
-                // If we are the Host, wake up the server!
-                if (isHost && server != null) {
-                    System.out.println("[SimpleP2P] Ringing the doorbell to wake up the server...");
-                    // This forces the main thread to execute a task, breaking the "Sleep" loop.
-                    server.execute(() -> {
-                        System.out.println("[SimpleP2P] Server Woken Up!");
-                    });
+                // FIX 2: RESTART THE PROXY
+                // When a new player connects, we need to open a NEW connection to the local server.
+                // The old socket is likely dead/closed.
+                if (isHost && localServerPort != -1) {
+                    restartHostProxy();
+                    wakeUpServer();
                 }
             }
+            // Always confirm so they know we heard them
             sendControl("HELLO_CONFIRM", peerIP, peerPort);
         }
         else if (msg.equals("HELLO_CONFIRM")) {
@@ -115,19 +125,38 @@ public class UDPConnection {
                 isConnectedToPeer = true;
                 log("§a>>> CONNECTION CONFIRMED! <<<");
 
-                // Same fix for confirm, just in case
-                if (isHost && server != null) {
-                    server.execute(() -> System.out.println("[SimpleP2P] Server Woken Up (Confirm)!"));
+                if (isHost && localServerPort != -1) {
+                    restartHostProxy();
+                    wakeUpServer();
                 }
             }
         }
     }
 
+    private void wakeUpServer() {
+        if (server != null) {
+            System.out.println("[SimpleP2P] Ringing Doorbell (Wake Up)...");
+            server.execute(() -> System.out.println("[SimpleP2P] Server Woken Up!"));
+        }
+    }
+
+    // --- PROXY LOGIC ---
+
     public void startHostProxy(int targetPort) {
         this.isHost = true;
+        this.localServerPort = targetPort; // Save for later restarts
+        // We don't start the thread immediately here anymore.
+        // We wait for the handshake (HELLO) to ensure we connect at the right time.
+    }
+
+    private void restartHostProxy() {
+        // Close old socket if exists
+        try { if (gameSocket != null) gameSocket.close(); } catch (Exception e) {}
+
         new Thread(() -> {
             try {
-                gameSocket = new Socket("127.0.0.1", targetPort);
+                System.out.println("[SimpleP2P] Connecting to local server port " + localServerPort);
+                gameSocket = new Socket("127.0.0.1", localServerPort);
                 gameIn = gameSocket.getInputStream();
                 gameOut = gameSocket.getOutputStream();
                 pumpGameToNetwork();
@@ -157,7 +186,7 @@ public class UDPConnection {
         try {
             while (running) {
                 int bytesRead = gameIn.read(chunk);
-                if (bytesRead == -1) break;
+                if (bytesRead == -1) break; // Local server closed connection
 
                 if (isConnectedToPeer) {
                     byte[] packetData = new byte[bytesRead + 1];
@@ -168,10 +197,15 @@ public class UDPConnection {
                 }
             }
         } catch (Exception e) {
-            log("§c[Pump Error] " + e.getMessage());
+            // This is normal when a player leaves
+        } finally {
+            // If the loop exits, the game session is over.
+            // Reset connection state so the next join works.
+            isConnectedToPeer = false;
         }
     }
 
+    // --- HELPERS ---
     public void register(String key) { sendControl("REGISTER " + key, signalingIP, signalingPort); }
     public void lookup(String key) { sendControl("LOOKUP " + key, signalingIP, signalingPort); }
 
