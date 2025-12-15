@@ -26,7 +26,7 @@ public class MixinConnectScreen {
         // IPs usually have dots (127.0.0.1) or colons (2001:db8::).
         // Our keys are UUID chunks (e.g., "a1b2c3d4").
         // Let's assume if there is NO dot, it is a key.
-        if (!inputHost.contains(".") || !inputHost.contains(":") || !inputHost.contains("localhost")) {
+        if (!inputHost.contains(".") && !inputHost.contains(":") && !inputHost.equals("localhost")) {
 
             System.out.println("[Mixin] Intercepted Connection to Key: " + inputHost);
 

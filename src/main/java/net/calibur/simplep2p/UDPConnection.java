@@ -31,6 +31,9 @@ public class UDPConnection {
     // We need to remember the local port to restart the proxy later
     private int localServerPort = -1;
 
+    // Session Management to prevent old threads from killing new connections
+    private volatile Object currentSessionToken = new Object();
+
     private CommandSourceStack source;
     private MinecraftServer server;
 
@@ -150,6 +153,13 @@ public class UDPConnection {
     }
 
     private void restartHostProxy() {
+        // Create a new token for the new session
+        Object sessionToken = new Object();
+        // CRITICAL: Set the token BEFORE closing the socket.
+        // This ensures that when the old thread wakes up (due to socket close),
+        // it sees the new token and does NOT reset the connection state.
+        this.currentSessionToken = sessionToken;
+
         // Close old socket if exists
         try { if (gameSocket != null) gameSocket.close(); } catch (Exception e) {}
 
@@ -159,7 +169,7 @@ public class UDPConnection {
                 gameSocket = new Socket("127.0.0.1", localServerPort);
                 gameIn = gameSocket.getInputStream();
                 gameOut = gameSocket.getOutputStream();
-                pumpGameToNetwork();
+                pumpGameToNetwork(sessionToken);
             } catch (Exception e) {
                 log("§c[Proxy Error] " + e.getMessage());
             }
@@ -168,20 +178,25 @@ public class UDPConnection {
 
     public void startClientProxy() {
         this.isHost = false;
+
+        // Create a new token for the new session
+        Object sessionToken = new Object();
+        this.currentSessionToken = sessionToken;
+
         new Thread(() -> {
             try {
                 gameListener = new ServerSocket(33333);
                 gameSocket = gameListener.accept();
                 gameIn = gameSocket.getInputStream();
                 gameOut = gameSocket.getOutputStream();
-                pumpGameToNetwork();
+                pumpGameToNetwork(sessionToken);
             } catch (Exception e) {
                 log("§c[Proxy Error] " + e.getMessage());
             }
         }).start();
     }
 
-    private void pumpGameToNetwork() {
+    private void pumpGameToNetwork(Object sessionToken) {
         byte[] chunk = new byte[PACKET_SIZE];
         try {
             while (running) {
@@ -201,7 +216,10 @@ public class UDPConnection {
         } finally {
             // If the loop exits, the game session is over.
             // Reset connection state so the next join works.
-            isConnectedToPeer = false;
+            // CRITICAL FIX: Only reset if WE are still the active session!
+            if (this.currentSessionToken == sessionToken) {
+                isConnectedToPeer = false;
+            }
         }
     }
 
