@@ -13,8 +13,8 @@ public class SimpleP2P implements ModInitializer {
 	public static UDPConnection activeConnection;
 
 	// CONFIG: Change this to your public Cloud VPS IP later!
-	private static final String SIGNALING_IP = "127.0.0.1";
-	private static final int SIGNALING_PORT = 5000;
+	public static final String SIGNALING_IP = "127.0.0.1";
+	public static final int SIGNALING_PORT = 5000;
 
 	@Override
 	public void onInitialize() {
