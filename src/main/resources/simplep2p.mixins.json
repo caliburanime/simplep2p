@@ -3,7 +3,8 @@
     "package": "net.calibur.simplep2p.mixin",
     "compatibilityLevel": "JAVA_21",
     "mixins": [
-        "ExampleMixin"
+        "ExampleMixin",
+        "MixinConnection"
     ],
     "client": [
     ],
