@@ -5,6 +5,7 @@ import calibur.directconnect.network.NetworkUtils;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.ConnectScreen;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.gui.screens.multiplayer.JoinMultiplayerScreen;
 import net.minecraft.client.multiplayer.ServerData;
 import net.minecraft.client.multiplayer.TransferState;
 import net.minecraft.client.multiplayer.resolver.ServerAddress;
@@ -22,6 +23,9 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public class DirectConnectMixin {
     private static final Logger LOGGER = LoggerFactory.getLogger("DirectConnect");
 
+    // Static flag to prevent re-interception of our own redirected connection
+    private static volatile boolean isRedirecting = false;
+
     /**
      * Intercepts the connect method to check for p2p. addresses.
      * Updated for 1.21.10 method signature.
@@ -30,6 +34,12 @@ public class DirectConnectMixin {
     private static void onConnect(Minecraft minecraft, ServerAddress address,
             ServerData serverData, TransferState transferState,
             CallbackInfo ci) {
+
+        // Skip if this is our own redirected connection
+        if (isRedirecting) {
+            LOGGER.debug("[DirectConnect] Skipping interception (redirecting)");
+            return;
+        }
 
         // Check if this is a p2p. address
         String fullAddress = serverData != null ? serverData.ip : null;
@@ -40,8 +50,10 @@ public class DirectConnectMixin {
             // Cancel the normal connection
             ci.cancel();
 
-            // Get current screen for returning on error
-            Screen parentScreen = minecraft.screen;
+            // Store parent screen for error recovery
+            Screen currentScreen = minecraft.screen;
+            Screen parentScreen = currentScreen instanceof ConnectScreen ? new JoinMultiplayerScreen(null)
+                    : currentScreen;
 
             // Start P2P connection
             JoinManager joinManager = JoinManager.getInstance();
@@ -52,35 +64,42 @@ public class DirectConnectMixin {
 
             joinManager.setOnError(error -> {
                 LOGGER.error("[DirectConnect] Connection failed: {}", error);
-                // Return to parent screen with error
                 minecraft.execute(() -> {
                     minecraft.setScreen(parentScreen);
                 });
             });
 
-            // Start the join process - this returns the proxy port when ready
+            // Start the join process
             joinManager.join(fullAddress).thenAccept(proxyPort -> {
                 LOGGER.info("[DirectConnect] Proxy ready on port {}, redirecting Minecraft...", proxyPort);
 
-                // Redirect Minecraft to connect to localhost:proxyPort
-                // We need to do this on the main thread and after a small delay
-                // to ensure the previous connection attempt is fully cancelled
                 minecraft.execute(() -> {
-                    try {
-                        // Small delay to let previous state clear
-                        Thread.sleep(100);
-                    } catch (InterruptedException ignored) {
-                    }
+                    // First, clear any existing screen to reset connection state
+                    minecraft.setScreen(null);
 
+                    // Create proxy server data
                     ServerAddress proxyAddress = new ServerAddress("127.0.0.1", proxyPort);
                     ServerData proxyServerData = new ServerData(
                             serverData.name + " (P2P)",
                             "127.0.0.1:" + proxyPort,
                             serverData.type());
 
-                    // Use a fresh ConnectScreen to connect
-                    ConnectScreen.startConnecting(parentScreen, minecraft,
-                            proxyAddress, proxyServerData, false, null);
+                    // Set flag to prevent re-interception
+                    isRedirecting = true;
+                    try {
+                        // Start fresh connection to local proxy
+                        ConnectScreen.startConnecting(parentScreen, minecraft,
+                                proxyAddress, proxyServerData, false, null);
+                    } finally {
+                        // Clear flag after a short delay (connection is now started)
+                        new Thread(() -> {
+                            try {
+                                Thread.sleep(500);
+                            } catch (InterruptedException ignored) {
+                            }
+                            isRedirecting = false;
+                        }).start();
+                    }
                 });
             }).exceptionally(e -> {
                 LOGGER.error("[DirectConnect] Join failed: {}", e.getMessage());
