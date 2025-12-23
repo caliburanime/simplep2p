@@ -1,41 +1,38 @@
 {
 	"schemaVersion": 1,
-	"id": "simplep2p",
+	"id": "direct-connect",
 	"version": "${version}",
-	"name": "SimpleP2P",
-	"description": "This is an example description! Tell everyone what your mod is about!",
+	"name": "Direct Connect P2P",
+	"description": "Peer-to-peer connection mod for Minecraft. Connect directly to friends without port forwarding using UDP hole punching.",
 	"authors": [
-		"Me!"
+		"calibur"
 	],
 	"contact": {
-		"homepage": "https://fabricmc.net/",
-		"sources": "https://github.com/FabricMC/fabric-example-mod"
+		"homepage": "https://github.com/calibur/direct-connect",
+		"sources": "https://github.com/calibur/direct-connect"
 	},
-	"license": "CC0-1.0",
-	"icon": "assets/simplep2p/icon.png",
+	"license": "MIT",
+	"icon": "assets/direct-connect/icon.png",
 	"environment": "*",
 	"entrypoints": {
 		"main": [
-			"net.calibur.simplep2p.SimpleP2P"
+			"calibur.directconnect.DirectConnect"
 		],
 		"client": [
-			"net.calibur.simplep2p.SimpleP2PClient"
+			"calibur.directconnect.DirectConnectClient"
 		]
 	},
 	"mixins": [
-		"simplep2p.mixins.json",
+		"direct-connect.mixins.json",
 		{
-			"config": "simplep2p.client.mixins.json",
+			"config": "direct-connect.client.mixins.json",
 			"environment": "client"
 		}
 	],
 	"depends": {
-		"fabricloader": ">=0.18.2",
+		"fabricloader": ">=0.18.3",
 		"minecraft": "~1.21.10",
 		"java": ">=21",
 		"fabric-api": "*"
-	},
-	"suggests": {
-		"another-mod": "*"
 	}
 }

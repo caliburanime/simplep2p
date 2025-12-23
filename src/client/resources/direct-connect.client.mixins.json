@@ -1,9 +1,9 @@
 {
 	"required": true,
-	"package": "net.calibur.simplep2p.mixin.client",
+	"package": "calibur.directconnect.mixin.client",
 	"compatibilityLevel": "JAVA_21",
 	"client": [
-		
+		"DirectConnectMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1
