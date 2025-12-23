@@ -81,15 +81,15 @@ public class RegistryClient {
     /**
      * Looks up a share code and returns the host's endpoints.
      * 
-     * @param shareCode  The share code (with or without p2p:// prefix)
+     * @param shareCode  The share code (with or without p2p. prefix)
      * @param clientPort Client's UDP port for hole punching
      * @return List of endpoints to try
      */
     public CompletableFuture<List<Endpoint>> lookup(String shareCode, int clientPort) {
-        // Strip p2p:// prefix if present
+        // Strip p2p. prefix if present
         String code = shareCode.toLowerCase().trim();
-        if (code.startsWith("p2p://")) {
-            code = code.substring(6);
+        if (code.startsWith("p2p.")) {
+            code = code.substring(4);
         }
 
         String requestBody = GSON.toJson(new LookupRequest(code, clientPort));

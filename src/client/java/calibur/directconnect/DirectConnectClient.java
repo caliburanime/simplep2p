@@ -18,6 +18,6 @@ public class DirectConnectClient implements ClientModInitializer {
 		// Pre-initialize JoinManager
 		JoinManager.getInstance();
 
-		LOGGER.info("[DirectConnect] Client ready. Use p2p://share-code to connect.");
+		LOGGER.info("[DirectConnect] Client ready. Use p2p.share-code to connect.");
 	}
 }

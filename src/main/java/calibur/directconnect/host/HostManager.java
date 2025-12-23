@@ -79,7 +79,7 @@ public class HostManager {
 
         // Handle code assignment
         registry.setOnCodeAssigned(code -> {
-            updateStatus("Hosting: p2p://" + code);
+            updateStatus("Hosting: p2p." + code);
         });
 
         // Handle registry disconnect
@@ -159,8 +159,8 @@ public class HostManager {
                     .thenAccept(success -> {
                         if (success) {
                             running.set(true);
-                            updateStatus("Hosting: p2p://" + config.getShareCode());
-                            LOGGER.info("[DirectConnect] Hosting started: p2p://{}", config.getShareCode());
+                            updateStatus("Hosting: p2p." + config.getShareCode());
+                            LOGGER.info("[DirectConnect] Hosting started: p2p.{}", config.getShareCode());
                         } else {
                             LOGGER.error("[DirectConnect] Failed to register with registry");
                             stop();

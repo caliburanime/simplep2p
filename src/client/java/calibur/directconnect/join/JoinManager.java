@@ -66,7 +66,7 @@ public class JoinManager {
     /**
      * Starts the join process for a P2P address.
      * 
-     * @param p2pAddress The p2p:// address (e.g., "p2p://happy-llama-42")
+     * @param p2pAddress The p2p. address (e.g., "p2p.happy-llama-42")
      * @return CompletableFuture with the local proxy port
      */
     public CompletableFuture<Integer> join(String p2pAddress) {

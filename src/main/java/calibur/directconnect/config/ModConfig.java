@@ -24,7 +24,7 @@ public class ModConfig {
     private static ModConfig instance;
 
     // Configuration fields
-    private String registryUrl = "http://localhost:8000";
+    private String registryUrl = "https://p2p-server-production-2953.up.railway.app";
     private String shareCode = null;
     private int udpPort = 0; // 0 means random
     private boolean debug = false;
@@ -200,10 +200,10 @@ public class ModConfig {
     }
 
     /**
-     * Returns the full p2p:// URI for this server.
+     * Returns the full p2p. address for this server.
      */
     public String getFullShareUri() {
-        return "p2p://" + getShareCode();
+        return "p2p." + getShareCode();
     }
 
     @Override

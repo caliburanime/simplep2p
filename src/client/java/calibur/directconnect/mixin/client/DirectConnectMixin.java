@@ -15,21 +15,21 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /**
- * Mixin to intercept server connection attempts and redirect p2p:// addresses.
+ * Mixin to intercept server connection attempts and redirect p2p. addresses.
  */
 @Mixin(ConnectScreen.class)
 public class DirectConnectMixin {
     private static final Logger LOGGER = LoggerFactory.getLogger("DirectConnect");
 
     /**
-     * Intercepts the connect method to check for p2p:// addresses.
+     * Intercepts the connect method to check for p2p. addresses.
      */
     @Inject(method = "connect", at = @At("HEAD"), cancellable = true)
     private static void onConnect(Screen parentScreen, Minecraft minecraft,
             ServerAddress address, ServerData serverData, boolean quickPlay,
             CallbackInfo ci) {
 
-        // Check if this is a p2p:// address
+        // Check if this is a p2p. address
         String fullAddress = serverData != null ? serverData.ip : null;
 
         if (fullAddress != null && NetworkUtils.isP2pAddress(fullAddress)) {

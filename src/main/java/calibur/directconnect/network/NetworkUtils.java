@@ -166,7 +166,7 @@ public class NetworkUtils {
     }
 
     /**
-     * Parses a p2p:// URI into just the share code.
+     * Parses a p2p. address into just the share code.
      */
     public static String parseShareCode(String input) {
         if (input == null)
@@ -174,9 +174,9 @@ public class NetworkUtils {
 
         String normalized = input.toLowerCase().trim();
 
-        // Handle p2p:// prefix
-        if (normalized.startsWith("p2p://")) {
-            return normalized.substring(6);
+        // Handle p2p. prefix (e.g., p2p.happy-llama-42)
+        if (normalized.startsWith("p2p.")) {
+            return normalized.substring(4);
         }
 
         // Check if it looks like a valid share code
@@ -188,7 +188,7 @@ public class NetworkUtils {
     }
 
     /**
-     * Checks if a server address is a p2p:// address.
+     * Checks if a server address is a p2p. address.
      */
     public static boolean isP2pAddress(String address) {
         if (address == null)
@@ -196,8 +196,8 @@ public class NetworkUtils {
 
         String normalized = address.toLowerCase().trim();
 
-        // Check for p2p:// prefix
-        if (normalized.startsWith("p2p://")) {
+        // Check for p2p. prefix (e.g., p2p.happy-llama-42)
+        if (normalized.startsWith("p2p.")) {
             return true;
         }
 
