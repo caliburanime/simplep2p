@@ -148,8 +148,11 @@ public class RegistryClient {
      * @param localIp       Local LAN IP
      * @param port          UDP port
      * @param requestedCode Requested share code (for persistence)
+     * @param wanIp         Public WAN IP (from STUN), can be null
+     * @param wanPort       Public WAN port (from STUN), can be 0
      */
-    public CompletableFuture<Boolean> register(String localIp, int port, String requestedCode) {
+    public CompletableFuture<Boolean> register(String localIp, int port, String requestedCode,
+            String wanIp, int wanPort) {
         String wsUrl = config.getRegistryUrl()
                 .replace("http://", "ws://")
                 .replace("https://", "wss://")
@@ -170,18 +173,23 @@ public class RegistryClient {
                             webSocket = ws;
                             connected = true;
 
-                            // Send registration payload
+                            // Send registration payload with STUN-detected WAN IP
                             JsonObject payload = new JsonObject();
                             payload.addProperty("local_ip", localIp);
                             payload.addProperty("port", port);
                             if (requestedCode != null && !requestedCode.isEmpty()) {
                                 payload.addProperty("requested_code", requestedCode);
                             }
+                            if (wanIp != null) {
+                                payload.addProperty("wan_ip", wanIp);
+                                payload.addProperty("wan_port", wanPort);
+                            }
 
                             ws.sendText(GSON.toJson(payload), true);
                             ws.request(1);
 
-                            LOGGER.info("[DirectConnect] Sent registration: {}:{}", localIp, port);
+                            LOGGER.info("[DirectConnect] Sent registration: LAN={}:{}, WAN={}:{}",
+                                    localIp, port, wanIp, wanPort);
                         }
 
                         @Override

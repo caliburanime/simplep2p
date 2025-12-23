@@ -151,11 +151,24 @@ public class HostManager {
             }
             LOGGER.info("[DirectConnect] UDP server started on port {}", port);
 
-            // 4. Register with registry
+            // 4. Get local and public IP
             String localIp = NetworkUtils.getLocalIp();
+
+            // Use STUN to detect public WAN IP (works behind CGNAT)
+            java.net.InetSocketAddress publicAddr = NetworkUtils.getPublicAddress(punchSocket);
+            String wanIp = publicAddr != null ? publicAddr.getAddress().getHostAddress() : null;
+            int wanPort = publicAddr != null ? publicAddr.getPort() : port;
+
+            if (wanIp != null) {
+                LOGGER.info("[DirectConnect] STUN detected WAN: {}:{}", wanIp, wanPort);
+            } else {
+                LOGGER.warn("[DirectConnect] STUN failed, using local IP only");
+            }
+
+            // 5. Register with registry (send both local and WAN IP)
             String shareCode = config.getShareCode();
 
-            registry.register(localIp, port, shareCode)
+            registry.register(localIp, port, shareCode, wanIp, wanPort)
                     .thenAccept(success -> {
                         if (success) {
                             running.set(true);

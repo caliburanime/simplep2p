@@ -158,7 +158,12 @@ public class JoinManager {
                         // Setup data handler
                         setupDataHandler();
 
-                        // Signal that proxy is ready
+                        // Complete the future with proxy port - this signals mixin to redirect
+                        if (!result.isDone()) {
+                            result.complete(proxyServer.getLocalPort());
+                        }
+
+                        // Also trigger callback if set (for backwards compatibility)
                         if (onProxyReady != null) {
                             onProxyReady.accept(proxyServer.getLocalPort());
                         }
@@ -233,10 +238,7 @@ public class JoinManager {
             minecraftConnection.setTcpNoDelay(true);
             LOGGER.info("[DirectConnect] MC client connected to proxy");
 
-            // Notify that proxy is ready
-            if (!result.isDone()) {
-                result.complete(proxyServer.getLocalPort());
-            }
+            // Note: result.complete() is called in raceEndpoints when UDP connects
 
             // Forward MC -> UDP
             InputStream in = minecraftConnection.getInputStream();

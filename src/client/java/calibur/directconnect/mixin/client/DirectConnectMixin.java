@@ -50,23 +50,6 @@ public class DirectConnectMixin {
                 LOGGER.info("[DirectConnect] Status: {}", status);
             });
 
-            joinManager.setOnProxyReady(proxyPort -> {
-                LOGGER.info("[DirectConnect] Proxy ready on port {}", proxyPort);
-
-                // Redirect Minecraft to connect to localhost:proxyPort
-                ServerAddress proxyAddress = new ServerAddress("127.0.0.1", proxyPort);
-                ServerData proxyServerData = new ServerData(
-                        serverData.name + " (P2P)",
-                        "127.0.0.1:" + proxyPort,
-                        serverData.type());
-
-                // Connect to local proxy
-                minecraft.execute(() -> {
-                    ConnectScreen.startConnecting(parentScreen, minecraft,
-                            proxyAddress, proxyServerData, false, null);
-                });
-            });
-
             joinManager.setOnError(error -> {
                 LOGGER.error("[DirectConnect] Connection failed: {}", error);
                 // Return to parent screen with error
@@ -75,8 +58,31 @@ public class DirectConnectMixin {
                 });
             });
 
-            // Start the join process
-            joinManager.join(fullAddress).exceptionally(e -> {
+            // Start the join process - this returns the proxy port when ready
+            joinManager.join(fullAddress).thenAccept(proxyPort -> {
+                LOGGER.info("[DirectConnect] Proxy ready on port {}, redirecting Minecraft...", proxyPort);
+
+                // Redirect Minecraft to connect to localhost:proxyPort
+                // We need to do this on the main thread and after a small delay
+                // to ensure the previous connection attempt is fully cancelled
+                minecraft.execute(() -> {
+                    try {
+                        // Small delay to let previous state clear
+                        Thread.sleep(100);
+                    } catch (InterruptedException ignored) {
+                    }
+
+                    ServerAddress proxyAddress = new ServerAddress("127.0.0.1", proxyPort);
+                    ServerData proxyServerData = new ServerData(
+                            serverData.name + " (P2P)",
+                            "127.0.0.1:" + proxyPort,
+                            serverData.type());
+
+                    // Use a fresh ConnectScreen to connect
+                    ConnectScreen.startConnecting(parentScreen, minecraft,
+                            proxyAddress, proxyServerData, false, null);
+                });
+            }).exceptionally(e -> {
                 LOGGER.error("[DirectConnect] Join failed: {}", e.getMessage());
                 minecraft.execute(() -> {
                     minecraft.setScreen(parentScreen);
