@@ -6,6 +6,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.ConnectScreen;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.multiplayer.ServerData;
+import net.minecraft.client.multiplayer.TransferState;
 import net.minecraft.client.multiplayer.resolver.ServerAddress;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -23,10 +24,11 @@ public class DirectConnectMixin {
 
     /**
      * Intercepts the connect method to check for p2p. addresses.
+     * Updated for 1.21.10 method signature.
      */
     @Inject(method = "connect", at = @At("HEAD"), cancellable = true)
-    private static void onConnect(Screen parentScreen, Minecraft minecraft,
-            ServerAddress address, ServerData serverData, boolean quickPlay,
+    private static void onConnect(Minecraft minecraft, ServerAddress address,
+            ServerData serverData, TransferState transferState,
             CallbackInfo ci) {
 
         // Check if this is a p2p. address
@@ -37,6 +39,9 @@ public class DirectConnectMixin {
 
             // Cancel the normal connection
             ci.cancel();
+
+            // Get current screen for returning on error
+            Screen parentScreen = minecraft.screen;
 
             // Start P2P connection
             JoinManager joinManager = JoinManager.getInstance();
@@ -58,7 +63,7 @@ public class DirectConnectMixin {
                 // Connect to local proxy
                 minecraft.execute(() -> {
                     ConnectScreen.startConnecting(parentScreen, minecraft,
-                            proxyAddress, proxyServerData, quickPlay, null);
+                            proxyAddress, proxyServerData, false, null);
                 });
             });
 
